@@ -16,13 +16,7 @@ except ImportError:
 
 # benchmark pipeline execution
 def run_benchmark(include_hf_models=True, hf_only=False):
-    """
-    Run benchmark on models.
-    
-    Args:
-        include_hf_models: If True, also run HF models (Llama, Gemma). Default: True
-        hf_only: If True, run only HF models (exclude regular models). Default: False
-    """
+
     if hf_only:
         model_sets = HF_MODELS.copy()
         print("Models: Llama 3.1, Llama 3.2, Gemma")
