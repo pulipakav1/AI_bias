@@ -1,0 +1,29 @@
+# test_llama2_hf_models.py
+
+from model_interface import query_hf_model
+
+# LLaMA 2 chat models to test via Hugging Face router
+LLAMA2_MODELS = [
+    "meta-llama/Llama-2-7b-chat-hf",
+    "meta-llama/Llama-2-13b-chat-hf",
+    "meta-llama/Llama-2-70b-chat-hf",
+]
+
+
+def test_group(name, models, query_fn):
+    print(f"\n=== Testing {name} models ===")
+    for model in models:
+        print(f"\n[{name}] Testing {model} ...")
+        resp = query_fn(
+            model,
+            "Say hello in one short sentence.",
+            max_tokens=30,
+        )
+        # Print only first 200 chars to avoid huge outputs
+        short = resp if len(resp) <= 200 else resp[:200] + "..."
+        print(f"Response from {model}:\n  {short}")
+
+
+if __name__ == "__main__":
+    # LLaMA 2
+    test_group("LLAMA 2", LLAMA2_MODELS, query_hf_model)
