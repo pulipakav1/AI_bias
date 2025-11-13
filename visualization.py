@@ -204,13 +204,6 @@ def plot_provider_model_comparison(df, metric="sentiment_score"):
 
 # Line plot showing model version changes across metrics
 def plot_model_version_changes(df, group_by_provider=True):
-    """
-    Create line plots showing how model versions change across different metrics.
-    
-    Args:
-        df: DataFrame with model results
-        group_by_provider: If True, create separate plots for each provider
-    """
     metrics = ["sentiment_score", "toxicity_score", "stereotype_score"]
     metric_labels = ["Sentiment Score", "Toxicity Score", "Stereotype Score"]
     
@@ -297,10 +290,7 @@ def plot_model_version_changes(df, group_by_provider=True):
 
 # Line plot showing version progression (if version numbers can be extracted)
 def plot_model_version_progression(df, metric="sentiment_score"):
-    """
-    Create line plots showing model version progression over time or by version number.
-    Groups models by their base name (e.g., 'gpt-4', 'claude-sonnet') and shows progression.
-    """
+    
     # Extract base model names and try to order by version
     def extract_base_name(model_name):
         """Extract base model name (e.g., 'gpt-4' from 'gpt-4.1-mini')"""

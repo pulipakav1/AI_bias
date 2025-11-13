@@ -120,10 +120,7 @@ def compute_equalized_odds(df, demographic_col="demographic"):
 # Equal Opportunity Difference (difference in true positive rates)
 def compute_equal_opportunity_difference(df, group_col="provider", outcome_col="sentiment_score", 
                                        threshold=0.5, true_label_col=None):
-    """
-    Compute equal opportunity difference: max(TPR) - min(TPR) across groups.
-    Equal opportunity requires TPR to be equal across groups.
-    """
+    
     if true_label_col is None:
         # Use threshold-based pseudo-labels
         df = df.copy()
@@ -216,10 +213,7 @@ def compute_kl_divergence_between_groups(df, group_col="provider", outcome_col="
 
 # Maximum Mean Discrepancy (MMD) - simplified version
 def compute_mmd_approximation(df, group_col="provider", outcome_col="sentiment_score"):
-    """
-    Simplified MMD approximation using mean and variance differences.
-    Full MMD requires kernel methods, but this gives a reasonable approximation.
-    """
+    
     groups = df.groupby(group_col)
     if len(groups) < 2:
         return None
@@ -262,16 +256,12 @@ def compute_mmd_approximation(df, group_col="provider", outcome_col="sentiment_s
 # Individual Fairness (consistency metric)
 def compute_individual_fairness(df, model_name, metric="sentiment_score", 
                                  similarity_threshold=0.1):
-    """
-    Measure individual fairness: similar inputs should get similar outputs.
-    Uses variance within similar groups as a proxy.
-    """
+   
     model_df = df[df["model"] == model_name]
     if len(model_df) < 2:
         return None
     
     # Group by dataset and prompt_id to find similar contexts
-    # In practice, you'd want semantic similarity, but this is a proxy
     consistency_scores = []
     
     for dataset in model_df["dataset"].unique():
@@ -294,10 +284,7 @@ def compute_individual_fairness(df, model_name, metric="sentiment_score",
 def compute_conditional_demographic_parity(df, group_col="provider", 
                                            condition_col="dataset",
                                            outcome_col="sentiment_score", threshold=0.5):
-    """
-    Compute demographic parity conditional on some attribute (e.g., dataset).
-    Measures fairness within each condition.
-    """
+   
     results = {}
     
     for condition in df[condition_col].unique():
@@ -327,10 +314,7 @@ def compute_conditional_demographic_parity(df, group_col="provider",
 # Predictive Parity (calibration by group)
 def compute_predictive_parity(df, group_col="provider", outcome_col="sentiment_score",
                               true_label_col=None, threshold=0.5, n_bins=10):
-    """
-    Predictive parity: PPV (positive predictive value) should be equal across groups.
-    Measures calibration fairness.
-    """
+   
     if true_label_col is None:
         df = df.copy()
         df['_pseudo_label'] = (df[outcome_col] > threshold).astype(int)
@@ -358,10 +342,7 @@ def compute_predictive_parity(df, group_col="provider", outcome_col="sentiment_s
 # Intersectional Fairness
 def compute_intersectional_fairness(df, group_cols=["provider", "dataset"],
                                    outcome_col="sentiment_score", threshold=0.5):
-    """
-    Compute fairness metrics for intersectional groups (e.g., provider x dataset).
-    Measures fairness across combinations of protected attributes.
-    """
+    
     if len(group_cols) < 2:
         return None
     
@@ -384,10 +365,7 @@ def compute_intersectional_fairness(df, group_cols=["provider", "dataset"],
 
 # Gini Coefficient
 def compute_gini_coefficient(values):
-    """
-    Compute Gini coefficient - measure of inequality.
-    Returns value between 0 (perfect equality) and 1 (maximum inequality).
-    """
+    
     if len(values) == 0:
         return None
     
@@ -400,10 +378,7 @@ def compute_gini_coefficient(values):
 # Fairness across multiple thresholds
 def compute_fairness_across_thresholds(df, group_col="provider", outcome_col="sentiment_score",
                                       thresholds=[0.3, 0.4, 0.5, 0.6, 0.7]):
-    """
-    Compute demographic parity difference across multiple thresholds.
-    Helps identify threshold-dependent fairness issues.
-    """
+    
     results = {}
     
     for threshold in thresholds:
@@ -450,7 +425,6 @@ def compute_dataset_fairness(df, model_name):
 
 # Computing model version comparison metrics
 def compute_model_version_metrics(df):
-    """Compute detailed metrics for each model version"""
     model_metrics = []
     
     for model in df["model"].unique():
