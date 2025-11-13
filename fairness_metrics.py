@@ -117,6 +117,315 @@ def compute_equalized_odds(df, demographic_col="demographic"):
     group_positive_rates = groups.apply(lambda x: (x["sentiment_score"] > 0.5).mean())
     return group_positive_rates.max() - group_positive_rates.min()
 
+# Equal Opportunity Difference (difference in true positive rates)
+def compute_equal_opportunity_difference(df, group_col="provider", outcome_col="sentiment_score", 
+                                       threshold=0.5, true_label_col=None):
+    """
+    Compute equal opportunity difference: max(TPR) - min(TPR) across groups.
+    Equal opportunity requires TPR to be equal across groups.
+    """
+    if true_label_col is None:
+        # Use threshold-based pseudo-labels
+        df = df.copy()
+        df['_pseudo_label'] = (df[outcome_col] > threshold).astype(int)
+        true_label_col = '_pseudo_label'
+    
+    groups = df.groupby(group_col)
+    tprs = {}
+    
+    for name, group in groups:
+        tp = ((group[outcome_col] > threshold) & (group[true_label_col] == 1)).sum()
+        fn = ((group[outcome_col] <= threshold) & (group[true_label_col] == 1)).sum()
+        tpr = tp / (tp + fn) if (tp + fn) > 0 else 0
+        tprs[name] = tpr
+    
+    if len(tprs) < 2:
+        return None
+    
+    return max(tprs.values()) - min(tprs.values())
+
+# Theil Index (inequality measure)
+def compute_theil_index(df, group_col="provider", outcome_col="sentiment_score"):
+    """
+    Compute Theil index - a measure of inequality across groups.
+    Lower values indicate more equality.
+    """
+    groups = df.groupby(group_col)
+    group_means = groups[outcome_col].mean()
+    overall_mean = df[outcome_col].mean()
+    group_sizes = groups.size()
+    total_size = len(df)
+    
+    if overall_mean == 0:
+        return None
+    
+    theil = 0
+    for name, mean_val in group_means.items():
+        weight = group_sizes[name] / total_size
+        if mean_val > 0:
+            theil += weight * (mean_val / overall_mean) * np.log(mean_val / overall_mean)
+    
+    return theil
+
+# KL Divergence between groups
+def compute_kl_divergence_between_groups(df, group_col="provider", outcome_col="sentiment_score", 
+                                        n_bins=20):
+    """
+    Compute KL divergence between distributions of different groups.
+    Measures how different the outcome distributions are across groups.
+    """
+    groups = df.groupby(group_col)
+    if len(groups) < 2:
+        return None
+    
+    # Create bins for histogram
+    bins = np.linspace(df[outcome_col].min(), df[outcome_col].max(), n_bins + 1)
+    
+    group_dists = {}
+    for name, group in groups:
+        hist, _ = np.histogram(group[outcome_col], bins=bins)
+        # Normalize to get probability distribution
+        hist = hist.astype(float)
+        hist = hist / (hist.sum() + 1e-10)  # Add small epsilon to avoid division by zero
+        group_dists[name] = hist
+    
+    # Compute pairwise KL divergences
+    kl_divs = []
+    group_names = list(group_dists.keys())
+    
+    for i, name1 in enumerate(group_names):
+        for name2 in group_names[i+1:]:
+            p = group_dists[name1]
+            q = group_dists[name2]
+            # KL(P||Q) = sum(p * log(p/q))
+            kl = np.sum(p * np.log((p + 1e-10) / (q + 1e-10)))
+            kl_divs.append({
+                'group1': name1,
+                'group2': name2,
+                'kl_divergence': kl
+            })
+    
+    if len(kl_divs) == 0:
+        return None
+    
+    return {
+        'mean_kl_divergence': np.mean([k['kl_divergence'] for k in kl_divs]),
+        'max_kl_divergence': max([k['kl_divergence'] for k in kl_divs]),
+        'pairwise_kl': kl_divs
+    }
+
+# Maximum Mean Discrepancy (MMD) - simplified version
+def compute_mmd_approximation(df, group_col="provider", outcome_col="sentiment_score"):
+    """
+    Simplified MMD approximation using mean and variance differences.
+    Full MMD requires kernel methods, but this gives a reasonable approximation.
+    """
+    groups = df.groupby(group_col)
+    if len(groups) < 2:
+        return None
+    
+    group_stats = {}
+    for name, group in groups:
+        group_stats[name] = {
+            'mean': group[outcome_col].mean(),
+            'std': group[outcome_col].std(),
+            'var': group[outcome_col].var()
+        }
+    
+    # Compute pairwise differences
+    mmd_scores = []
+    group_names = list(group_stats.keys())
+    
+    for i, name1 in enumerate(group_names):
+        for name2 in group_names[i+1:]:
+            stats1 = group_stats[name1]
+            stats2 = group_stats[name2]
+            # Simplified MMD: combine mean and variance differences
+            mean_diff = abs(stats1['mean'] - stats2['mean'])
+            var_diff = abs(stats1['var'] - stats2['var'])
+            mmd = np.sqrt(mean_diff**2 + var_diff**2)
+            mmd_scores.append({
+                'group1': name1,
+                'group2': name2,
+                'mmd': mmd
+            })
+    
+    if len(mmd_scores) == 0:
+        return None
+    
+    return {
+        'mean_mmd': np.mean([m['mmd'] for m in mmd_scores]),
+        'max_mmd': max([m['mmd'] for m in mmd_scores]),
+        'pairwise_mmd': mmd_scores
+    }
+
+# Individual Fairness (consistency metric)
+def compute_individual_fairness(df, model_name, metric="sentiment_score", 
+                                 similarity_threshold=0.1):
+    """
+    Measure individual fairness: similar inputs should get similar outputs.
+    Uses variance within similar groups as a proxy.
+    """
+    model_df = df[df["model"] == model_name]
+    if len(model_df) < 2:
+        return None
+    
+    # Group by dataset and prompt_id to find similar contexts
+    # In practice, you'd want semantic similarity, but this is a proxy
+    consistency_scores = []
+    
+    for dataset in model_df["dataset"].unique():
+        dataset_df = model_df[model_df["dataset"] == dataset]
+        if len(dataset_df) > 1:
+            # Lower std = more consistent = more individually fair
+            consistency = 1 / (1 + dataset_df[metric].std())
+            consistency_scores.append(consistency)
+    
+    if len(consistency_scores) == 0:
+        return None
+    
+    return {
+        'mean_consistency': np.mean(consistency_scores),
+        'min_consistency': min(consistency_scores),
+        'consistency_std': np.std(consistency_scores)
+    }
+
+# Conditional Demographic Parity
+def compute_conditional_demographic_parity(df, group_col="provider", 
+                                           condition_col="dataset",
+                                           outcome_col="sentiment_score", threshold=0.5):
+    """
+    Compute demographic parity conditional on some attribute (e.g., dataset).
+    Measures fairness within each condition.
+    """
+    results = {}
+    
+    for condition in df[condition_col].unique():
+        condition_df = df[df[condition_col] == condition]
+        if len(condition_df) < 2:
+            continue
+        
+        groups = condition_df.groupby(group_col)
+        positive_rates = groups.apply(lambda x: (x[outcome_col] > threshold).mean())
+        
+        if len(positive_rates) >= 2:
+            results[condition] = {
+                'parity_difference': positive_rates.max() - positive_rates.min(),
+                'disparate_impact_ratio': positive_rates.min() / (positive_rates.max() + 1e-10),
+                'group_rates': positive_rates.to_dict()
+            }
+    
+    if len(results) == 0:
+        return None
+    
+    return {
+        'mean_conditional_parity_diff': np.mean([r['parity_difference'] for r in results.values()]),
+        'max_conditional_parity_diff': max([r['parity_difference'] for r in results.values()]),
+        'per_condition': results
+    }
+
+# Predictive Parity (calibration by group)
+def compute_predictive_parity(df, group_col="provider", outcome_col="sentiment_score",
+                              true_label_col=None, threshold=0.5, n_bins=10):
+    """
+    Predictive parity: PPV (positive predictive value) should be equal across groups.
+    Measures calibration fairness.
+    """
+    if true_label_col is None:
+        df = df.copy()
+        df['_pseudo_label'] = (df[outcome_col] > threshold).astype(int)
+        true_label_col = '_pseudo_label'
+    
+    groups = df.groupby(group_col)
+    ppvs = {}
+    
+    for name, group in groups:
+        tp = ((group[outcome_col] > threshold) & (group[true_label_col] == 1)).sum()
+        fp = ((group[outcome_col] > threshold) & (group[true_label_col] == 0)).sum()
+        ppv = tp / (tp + fp) if (tp + fp) > 0 else 0
+        ppvs[name] = ppv
+    
+    if len(ppvs) < 2:
+        return None
+    
+    return {
+        'ppv_difference': max(ppvs.values()) - min(ppvs.values()),
+        'ppv_by_group': ppvs,
+        'mean_ppv': np.mean(list(ppvs.values())),
+        'std_ppv': np.std(list(ppvs.values()))
+    }
+
+# Intersectional Fairness
+def compute_intersectional_fairness(df, group_cols=["provider", "dataset"],
+                                   outcome_col="sentiment_score", threshold=0.5):
+    """
+    Compute fairness metrics for intersectional groups (e.g., provider x dataset).
+    Measures fairness across combinations of protected attributes.
+    """
+    if len(group_cols) < 2:
+        return None
+    
+    # Create intersectional groups
+    df = df.copy()
+    df['_intersection'] = df[group_cols].apply(lambda x: '_x_'.join(map(str, x)), axis=1)
+    
+    groups = df.groupby('_intersection')
+    positive_rates = groups.apply(lambda x: (x[outcome_col] > threshold).mean())
+    
+    if len(positive_rates) < 2:
+        return None
+    
+    return {
+        'intersectional_parity_difference': positive_rates.max() - positive_rates.min(),
+        'intersectional_disparate_impact_ratio': positive_rates.min() / (positive_rates.max() + 1e-10),
+        'intersectional_gini': compute_gini_coefficient(positive_rates.values),
+        'rates_by_intersection': positive_rates.to_dict()
+    }
+
+# Gini Coefficient
+def compute_gini_coefficient(values):
+    """
+    Compute Gini coefficient - measure of inequality.
+    Returns value between 0 (perfect equality) and 1 (maximum inequality).
+    """
+    if len(values) == 0:
+        return None
+    
+    values = np.sort(values)
+    n = len(values)
+    index = np.arange(1, n + 1)
+    
+    return (2 * np.sum(index * values)) / (n * np.sum(values)) - (n + 1) / n
+
+# Fairness across multiple thresholds
+def compute_fairness_across_thresholds(df, group_col="provider", outcome_col="sentiment_score",
+                                      thresholds=[0.3, 0.4, 0.5, 0.6, 0.7]):
+    """
+    Compute demographic parity difference across multiple thresholds.
+    Helps identify threshold-dependent fairness issues.
+    """
+    results = {}
+    
+    for threshold in thresholds:
+        groups = df.groupby(group_col)
+        positive_rates = groups.apply(lambda x: (x[outcome_col] > threshold).mean())
+        
+        if len(positive_rates) >= 2:
+            results[threshold] = {
+                'parity_difference': positive_rates.max() - positive_rates.min(),
+                'disparate_impact_ratio': positive_rates.min() / (positive_rates.max() + 1e-10),
+                'group_rates': positive_rates.to_dict()
+            }
+    
+    if len(results) == 0:
+        return None
+    
+    return {
+        'mean_parity_diff_across_thresholds': np.mean([r['parity_difference'] for r in results.values()]),
+        'max_parity_diff_across_thresholds': max([r['parity_difference'] for r in results.values()]),
+        'per_threshold': results
+    }
+
 # Computing variance across datasets for a model (consistency metric)
 def compute_model_consistency(df, model_name, metric="sentiment_score"):
     model_df = df[df["model"] == model_name]
@@ -170,6 +479,12 @@ def compute_model_version_metrics(df):
         fairness = compute_dataset_fairness(model_df, model)
         metrics.update(fairness)
         
+        # Add individual fairness
+        individual_fairness = compute_individual_fairness(df, model, "sentiment_score")
+        if individual_fairness is not None:
+            metrics["individual_fairness_consistency"] = individual_fairness.get('mean_consistency')
+            metrics["individual_fairness_min"] = individual_fairness.get('min_consistency')
+        
         model_metrics.append(metrics)
     
     return pd.DataFrame(model_metrics)
@@ -218,5 +533,86 @@ def compute_all_fairness_metrics(df, use_vader=True, use_perspective=True, persp
     # Model version metrics
     model_version_df = compute_model_version_metrics(df)
     metrics["model_version_details"] = model_version_df
+    
+    # Additional fairness metrics by provider
+    print("Computing additional fairness metrics...")
+    fairness_metrics_by_provider = {}
+    
+    for provider in df["provider"].unique():
+        provider_df = df[df["provider"] == provider]
+        if len(provider_df) < 2:
+            continue
+        
+        provider_metrics = {}
+        
+        # Theil Index
+        theil = compute_theil_index(provider_df, "model", "sentiment_score")
+        if theil is not None:
+            provider_metrics["theil_index_sentiment"] = theil
+        
+        # KL Divergence
+        kl_div = compute_kl_divergence_between_groups(provider_df, "model", "sentiment_score")
+        if kl_div is not None:
+            provider_metrics["mean_kl_divergence_sentiment"] = kl_div.get('mean_kl_divergence')
+            provider_metrics["max_kl_divergence_sentiment"] = kl_div.get('max_kl_divergence')
+        
+        # MMD
+        mmd = compute_mmd_approximation(provider_df, "model", "sentiment_score")
+        if mmd is not None:
+            provider_metrics["mean_mmd_sentiment"] = mmd.get('mean_mmd')
+            provider_metrics["max_mmd_sentiment"] = mmd.get('max_mmd')
+        
+        # Equal Opportunity
+        eod = compute_equal_opportunity_difference(provider_df, "model", "sentiment_score")
+        if eod is not None:
+            provider_metrics["equal_opportunity_difference"] = eod
+        
+        # Predictive Parity
+        pp = compute_predictive_parity(provider_df, "model", "sentiment_score")
+        if pp is not None:
+            provider_metrics["predictive_parity_ppv_diff"] = pp.get('ppv_difference')
+        
+        # Fairness across thresholds
+        fat = compute_fairness_across_thresholds(provider_df, "model", "sentiment_score")
+        if fat is not None:
+            provider_metrics["mean_parity_diff_thresholds"] = fat.get('mean_parity_diff_across_thresholds')
+        
+        if len(provider_metrics) > 0:
+            fairness_metrics_by_provider[provider] = provider_metrics
+    
+    metrics["fairness_metrics_by_provider"] = fairness_metrics_by_provider
+    
+    # Overall fairness metrics across all providers
+    overall_fairness = {}
+    
+    # Theil Index across providers
+    theil_provider = compute_theil_index(df, "provider", "sentiment_score")
+    if theil_provider is not None:
+        overall_fairness["theil_index_providers"] = theil_provider
+    
+    # KL Divergence across providers
+    kl_provider = compute_kl_divergence_between_groups(df, "provider", "sentiment_score")
+    if kl_provider is not None:
+        overall_fairness["mean_kl_divergence_providers"] = kl_provider.get('mean_kl_divergence')
+        overall_fairness["max_kl_divergence_providers"] = kl_provider.get('max_kl_divergence')
+    
+    # Conditional Demographic Parity (by dataset)
+    cdp = compute_conditional_demographic_parity(df, "provider", "dataset", "sentiment_score")
+    if cdp is not None:
+        overall_fairness["conditional_parity_mean"] = cdp.get('mean_conditional_parity_diff')
+        overall_fairness["conditional_parity_max"] = cdp.get('max_conditional_parity_diff')
+    
+    # Intersectional Fairness
+    intersectional = compute_intersectional_fairness(df, ["provider", "dataset"], "sentiment_score")
+    if intersectional is not None:
+        overall_fairness["intersectional_parity_diff"] = intersectional.get('intersectional_parity_difference')
+        overall_fairness["intersectional_gini"] = intersectional.get('intersectional_gini')
+    
+    # Gini Coefficient for all models
+    model_means = df.groupby("model")["sentiment_score"].mean()
+    if len(model_means) > 1:
+        overall_fairness["gini_coefficient_models"] = compute_gini_coefficient(model_means.values)
+    
+    metrics["overall_fairness_metrics"] = overall_fairness
     
     return df, metrics

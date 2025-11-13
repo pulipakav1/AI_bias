@@ -202,6 +202,185 @@ def plot_provider_model_comparison(df, metric="sentiment_score"):
     plt.savefig(f"{PLOTS_DIR}/provider_model_comparison_{metric}.png", dpi=300, bbox_inches='tight')
     plt.close()
 
+# Line plot showing model version changes across metrics
+def plot_model_version_changes(df, group_by_provider=True):
+    """
+    Create line plots showing how model versions change across different metrics.
+    
+    Args:
+        df: DataFrame with model results
+        group_by_provider: If True, create separate plots for each provider
+    """
+    metrics = ["sentiment_score", "toxicity_score", "stereotype_score"]
+    metric_labels = ["Sentiment Score", "Toxicity Score", "Stereotype Score"]
+    
+    if group_by_provider:
+        # Create separate plot for each provider
+        providers = sorted(df["provider"].unique())
+        
+        for provider in providers:
+            provider_df = df[df["provider"] == provider]
+            if len(provider_df) == 0:
+                continue
+            
+            models = sorted(provider_df["model"].unique())
+            if len(models) < 2:
+                continue  # Need at least 2 models for comparison
+            
+            plt.figure(figsize=(14, 8))
+            
+            # Calculate mean scores for each model across all metrics
+            model_means = {}
+            model_stds = {}
+            for model in models:
+                model_data = provider_df[provider_df["model"] == model]
+                model_means[model] = [model_data[metric].mean() for metric in metrics]
+                model_stds[model] = [model_data[metric].std() for metric in metrics]
+            
+            # Plot lines for each model
+            x_positions = np.arange(len(metrics))
+            colors = plt.cm.tab10(np.linspace(0, 1, len(models)))
+            
+            for idx, model in enumerate(models):
+                means = model_means[model]
+                stds = model_stds[model]
+                plt.plot(x_positions, means, marker='o', linewidth=2.5, 
+                        markersize=8, label=model, color=colors[idx], alpha=0.8)
+                # Add error bars
+                plt.errorbar(x_positions, means, yerr=stds, fmt='none', 
+                           color=colors[idx], alpha=0.5, capsize=5)
+            
+            plt.xticks(x_positions, metric_labels, fontsize=11)
+            plt.ylabel("Score", fontsize=12)
+            plt.title(f"Model Version Changes: {provider.upper()}", 
+                     fontsize=14, fontweight='bold')
+            plt.legend(loc='best', fontsize=9, framealpha=0.9)
+            plt.grid(True, alpha=0.3, linestyle='--')
+            plt.ylim(bottom=0)
+            plt.tight_layout()
+            plt.savefig(f"{PLOTS_DIR}/model_version_changes_{provider}.png", dpi=300)
+            plt.close()
+    
+    # Also create an overall comparison plot with all providers
+    plt.figure(figsize=(16, 10))
+    
+    providers = sorted(df["provider"].unique())
+    all_models = sorted(df["model"].unique())
+    colors = plt.cm.tab20(np.linspace(0, 1, len(all_models)))
+    model_color_map = {model: colors[i] for i, model in enumerate(all_models)}
+    
+    x_positions = np.arange(len(metrics))
+    
+    for model in all_models:
+        model_data = df[df["model"] == model]
+        if len(model_data) == 0:
+            continue
+        
+        means = [model_data[metric].mean() for metric in metrics]
+        stds = [model_data[metric].std() for metric in metrics]
+        
+        plt.plot(x_positions, means, marker='o', linewidth=2, markersize=7, 
+                label=model, color=model_color_map[model], alpha=0.7)
+        plt.errorbar(x_positions, means, yerr=stds, fmt='none', 
+                    color=model_color_map[model], alpha=0.4, capsize=4)
+    
+    plt.xticks(x_positions, metric_labels, fontsize=11)
+    plt.ylabel("Score", fontsize=12)
+    plt.title("Model Version Changes Across All Providers", 
+             fontsize=16, fontweight='bold')
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8, ncol=1)
+    plt.grid(True, alpha=0.3, linestyle='--')
+    plt.ylim(bottom=0)
+    plt.tight_layout()
+    plt.savefig(f"{PLOTS_DIR}/model_version_changes_all.png", dpi=300, bbox_inches='tight')
+    plt.close()
+
+# Line plot showing version progression (if version numbers can be extracted)
+def plot_model_version_progression(df, metric="sentiment_score"):
+    """
+    Create line plots showing model version progression over time or by version number.
+    Groups models by their base name (e.g., 'gpt-4', 'claude-sonnet') and shows progression.
+    """
+    # Extract base model names and try to order by version
+    def extract_base_name(model_name):
+        """Extract base model name (e.g., 'gpt-4' from 'gpt-4.1-mini')"""
+        parts = model_name.split('-')
+        if len(parts) >= 2:
+            return '-'.join(parts[:2])
+        return parts[0] if parts else model_name
+    
+    def extract_version_number(model_name):
+        """Try to extract version number for ordering"""
+        import re
+        # Look for version patterns like 4.1, 3.1, 2.5, etc.
+        match = re.search(r'(\d+\.\d+)', model_name)
+        if match:
+            return float(match.group(1))
+        # Look for single digit versions
+        match = re.search(r'[vV]?(\d+)', model_name)
+        if match:
+            return float(match.group(1))
+        return 0.0
+    
+    # Group models by base name
+    df_copy = df.copy()
+    df_copy['base_name'] = df_copy['model'].apply(extract_base_name)
+    df_copy['version_num'] = df_copy['model'].apply(extract_version_number)
+    
+    base_names = df_copy['base_name'].unique()
+    
+    # Filter to only base names with at least 2 models
+    valid_base_names = []
+    for base_name in sorted(base_names):
+        base_df = df_copy[df_copy['base_name'] == base_name]
+        models = base_df['model'].unique()
+        if len(models) >= 2:
+            valid_base_names.append(base_name)
+    
+    if len(valid_base_names) == 0:
+        return  # No valid base names with multiple versions
+    
+    fig, axes = plt.subplots(1, len(valid_base_names), figsize=(6*len(valid_base_names), 8))
+    if len(valid_base_names) == 1:
+        axes = [axes]
+    
+    for idx, base_name in enumerate(valid_base_names):
+        base_df = df_copy[df_copy['base_name'] == base_name]
+        models = base_df['model'].unique()
+        
+        # Sort models by version number
+        model_version_pairs = [(m, extract_version_number(m)) for m in models]
+        model_version_pairs.sort(key=lambda x: x[1])
+        sorted_models = [m for m, v in model_version_pairs]
+        
+        # Calculate means for each model
+        model_means = []
+        model_stds = []
+        for model in sorted_models:
+            model_data = base_df[base_df['model'] == model]
+            model_means.append(model_data[metric].mean())
+            model_stds.append(model_data[metric].std())
+        
+        # Plot line
+        x_positions = np.arange(len(sorted_models))
+        axes[idx].plot(x_positions, model_means, marker='o', linewidth=2.5, 
+                      markersize=10, color='steelblue', alpha=0.8)
+        axes[idx].errorbar(x_positions, model_means, yerr=model_stds, 
+                          fmt='none', color='steelblue', alpha=0.5, capsize=5)
+        axes[idx].set_xticks(x_positions)
+        axes[idx].set_xticklabels(sorted_models, rotation=45, ha='right', fontsize=9)
+        axes[idx].set_ylabel(metric.replace("_", " ").title(), fontsize=11)
+        axes[idx].set_title(f"{base_name.upper()} Version Progression", 
+                           fontsize=12, fontweight='bold')
+        axes[idx].grid(True, alpha=0.3, linestyle='--')
+        axes[idx].set_ylim(bottom=0)
+    
+    plt.suptitle(f"Model Version Progression: {metric.replace('_', ' ').title()}", 
+                fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    plt.savefig(f"{PLOTS_DIR}/model_version_progression_{metric}.png", dpi=300)
+    plt.close()
+
 # summary 
 def create_summary_table(df):
     summary = df.groupby(["provider", "model"]).agg({
@@ -268,6 +447,15 @@ def generate_all_visualizations(df, model_version_df=None):
     # Advanced visualizations
     plot_correlation_heatmap(df)
     plot_model_metrics_heatmap(df)
+    
+    # Model version line plots
+    print("\nGenerating model version line plots...")
+    try:
+        plot_model_version_changes(df, group_by_provider=True)
+        for metric in metrics:
+            plot_model_version_progression(df, metric)
+    except Exception as e:
+        print(f"  Warning: Could not generate some model version plots: {e}")
     
     # Create detailed tables
     summary = create_summary_table(df)
