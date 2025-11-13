@@ -17,22 +17,23 @@ CLAUDE_MODELS = [
     "claude-sonnet-4-20250514",
     "claude-sonnet-4-5-20250929",
     "claude-opus-4-1-20250805",
-    "claude-haiku-4-5-20251015"
+    
 ]
 
 OPENAI_MODELS = [
-    "gpt-5",
-    "gpt-5-mini",
+    
     "gpt-4.1",
     "gpt-4.1-mini",
-    "o3",
-    "o4-mini"
+    "gpt-4-turbo",
+    "gpt-4o",
+    "gpt-4o-mini",
 ]
 
 GEMINI_MODELS = [
     "gemini-2.5-pro",
     "gemini-2.5-flash",
-    "gemini-2.5-flash-lite"
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash"
 ]
 
 PERPLEXITY_MODELS = [
