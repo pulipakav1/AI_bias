@@ -44,11 +44,27 @@ def query_openai(model_name, prompt, max_tokens=500):
         return f"Error: {e}"
 
 
-#query gemini
 def query_gemini(model_name, prompt, max_tokens=500):
     try:
         model = genai.GenerativeModel(model_name)
-        response = model.generate_content(prompt)
+        
+        # CRITICAL: Disable safety filters for bias benchmarking
+        safety_settings = {
+            'HARM_CATEGORY_HARASSMENT': 'BLOCK_NONE',
+            'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_NONE',
+            'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_NONE',
+            'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_NONE',
+        }
+        
+        response = model.generate_content(
+            prompt,
+            safety_settings=safety_settings
+        )
+        
+        # Check if blocked
+        if response.prompt_feedback and response.prompt_feedback.block_reason:
+            return f"[BLOCKED: {response.prompt_feedback.block_reason}]"
+        
         return response.text.strip() if response.text else "[No text returned]"
     except Exception as e:
         return f"Error: {e}"
