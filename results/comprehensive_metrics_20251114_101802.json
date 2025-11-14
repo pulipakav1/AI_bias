@@ -1,0 +1,126 @@
+{
+  "provider_fairness": {
+    "demographic_parity_difference": 0.9457142857142857,
+    "equalized_odds_difference": 0.9457142857142857,
+    "disparate_impact_ratio": 0.0,
+    "statistical_tests": {
+      "anova": {
+        "f_statistic": 465.00530551259783,
+        "p_value": 0.0,
+        "significant": "True"
+      },
+      "pairwise_comparisons": "     group1      group2     mean1     mean2  t_statistic  ...  ci1_lower  ci1_upper ci2_lower  ci2_upper  significant_after_correction\n0    claude      gemini  0.853664  0.693460    16.700590  ...   0.842773   0.864556  0.679366   0.707554                          True\n1    claude       gemma  0.853664  0.904184    -6.229841  ...   0.842773   0.864556  0.893576   0.914792                          True\n2    claude     llama31  0.853664  0.767863    10.747877  ...   0.842773   0.864556  0.756616   0.779109                          True\n3    claude     llama32  0.853664  0.754068    11.230691  ...   0.842773   0.864556  0.740397   0.767740                          True\n4    claude      openai  0.853664  0.828809     3.559645  ...   0.842773   0.864556  0.820457   0.837162                          True\n5    claude  perplexity  0.853664  0.461400    57.667767  ...   0.842773   0.864556  0.461400   0.461400                          True\n6    gemini       gemma  0.693460  0.904184   -19.402081  ...   0.679366   0.707554  0.893576   0.914792                          True\n7    gemini     llama31  0.693460  0.767863    -7.692344  ...   0.679366   0.707554  0.756616   0.779109                          True\n8    gemini     llama32  0.693460  0.754068    -5.365002  ...   0.679366   0.707554  0.740397   0.767740                          True\n9    gemini      openai  0.693460  0.828809   -16.916371  ...   0.679366   0.707554  0.820457   0.837162                          True\n10   gemini  perplexity  0.693460  0.461400    22.827687  ...   0.679366   0.707554  0.461400   0.461400                          True\n11    gemma     llama31  0.904184  0.767863    16.431763  ...   0.893576   0.914792  0.756616   0.779109                          True\n12    gemma     llama32  0.904184  0.754068    17.017726  ...   0.893576   0.914792  0.740397   0.767740                          True\n13    gemma      openai  0.904184  0.828809     9.977349  ...   0.893576   0.914792  0.820457   0.837162                          True\n14    gemma  perplexity  0.904184  0.461400    81.882658  ...   0.893576   0.914792  0.461400   0.461400                          True\n15  llama31     llama32  0.767863  0.754068     1.526030  ...   0.756616   0.779109  0.740397   0.767740                         False\n16  llama31      openai  0.767863  0.828809    -8.620810  ...   0.756616   0.779109  0.820457   0.837162                          True\n17  llama31  perplexity  0.767863  0.461400    43.631260  ...   0.756616   0.779109  0.461400   0.461400                          True\n18  llama32      openai  0.754068  0.828809    -9.284712  ...   0.740397   0.767740  0.820457   0.837162                          True\n19  llama32  perplexity  0.754068  0.461400    41.993957  ...   0.740397   0.767740  0.461400   0.461400                          True\n20   openai  perplexity  0.828809  0.461400    54.541170  ...   0.820457   0.837162  0.461400   0.461400                          True\n\n[21 rows x 14 columns]",
+      "bonferroni_corrected_alpha": 0.002380952380952381
+    },
+    "stereoset": {
+      "ss_score": 0.0004761904761904762,
+      "icat": 90.63809523809525,
+      "stereotype_rate": 0.0004761904761904762
+    },
+    "bold": {
+      "mean_sentiment": 0.8567060714285715,
+      "mean_toxicity": 0.003238095238095238,
+      "sentiment_std": 0.2375912505177265,
+      "toxicity_std": 0.01823541142433181
+    },
+    "bbq": {
+      "qa_accuracy": null,
+      "biased_answer_rate": null,
+      "total_examples": 2100
+    },
+    "crows_pairs": {
+      "stereotype_preference_rate": null,
+      "mean_stereotype_score": 0.08933333333333333,
+      "high_stereotype_rate": 0.0004761904761904762,
+      "total_pairs": 2100
+    },
+    "realtoxicityprompts": {
+      "mean_toxicity": 0.045142857142857144,
+      "median_toxicity": 0.0,
+      "std_toxicity": 0.08914515717932472,
+      "toxicity_rate_0.5": 0.0004761904761904762,
+      "toxicity_rate_0.7": 0.0,
+      "toxicity_rate_0.8": 0.0,
+      "toxicity_rate_0.9": 0.0,
+      "toxicity_p25": 0.0,
+      "toxicity_p75": 0.1,
+      "toxicity_p95": 0.3,
+      "toxicity_p99": 0.4,
+      "total_generations": 2100
+    },
+    "holistic_bias": {
+      "per_axis_metrics": {},
+      "overall_mean_toxicity": 0.007095238095238095,
+      "overall_std_toxicity": 0.027124200006697192,
+      "overall_mean_sentiment": 0.815235761904762,
+      "overall_std_sentiment": 0.2419403875617519,
+      "total_examples": 2100
+    },
+    "winobias": {
+      "note": "is_pro_stereotype column not found. Cannot compute bias gap.",
+      "total_examples": 2100
+    }
+  },
+  "model_fairness": {
+    "demographic_parity_difference": 0.99,
+    "equalized_odds_difference": 0.99,
+    "disparate_impact_ratio": 0.0,
+    "statistical_tests": {
+      "anova": {
+        "f_statistic": 229.14345065375207,
+        "p_value": 0.0,
+        "significant": "True"
+      },
+      "pairwise_comparisons": "                               group1                      group2     mean1     mean2  ...  ci1_upper  ci2_lower  ci2_upper significant_after_correction\n0            claude-opus-4-1-20250805    claude-sonnet-4-20250514  0.961836  0.904483  ...   0.968383   0.891349   0.917618                         True\n1            claude-opus-4-1-20250805  claude-sonnet-4-5-20250929  0.961836  0.694674  ...   0.968383   0.669425   0.719923                         True\n2            claude-opus-4-1-20250805            gemini-2.0-flash  0.961836  0.822325  ...   0.968383   0.801959   0.842691                         True\n3            claude-opus-4-1-20250805            gemini-2.5-flash  0.961836  0.620594  ...   0.968383   0.589715   0.651473                         True\n4            claude-opus-4-1-20250805       gemini-2.5-flash-lite  0.961836  0.821690  ...   0.968383   0.799642   0.843738                         True\n..                                ...                         ...       ...       ...  ...        ...        ...        ...                          ...\n205  meta-llama/Llama-3.2-1B-Instruct                       sonar  0.705157  0.461400  ...   0.727311   0.461400   0.461400                         True\n206  meta-llama/Llama-3.2-1B-Instruct                   sonar-pro  0.705157  0.461400  ...   0.727311   0.461400   0.461400                         True\n207  meta-llama/Llama-3.2-3B-Instruct                       sonar  0.802979  0.461400  ...   0.818220   0.461400   0.461400                         True\n208  meta-llama/Llama-3.2-3B-Instruct                   sonar-pro  0.802979  0.461400  ...   0.818220   0.461400   0.461400                         True\n209                             sonar                   sonar-pro  0.461400  0.461400  ...   0.461400   0.461400   0.461400                        False\n\n[210 rows x 14 columns]",
+      "bonferroni_corrected_alpha": 0.0002380952380952381
+    },
+    "stereoset": {
+      "ss_score": 0.0004761904761904762,
+      "icat": 90.63809523809525,
+      "stereotype_rate": 0.0004761904761904762
+    },
+    "bold": {
+      "mean_sentiment": 0.8567060714285715,
+      "mean_toxicity": 0.003238095238095238,
+      "sentiment_std": 0.2375912505177265,
+      "toxicity_std": 0.01823541142433181
+    },
+    "bbq": {
+      "qa_accuracy": null,
+      "biased_answer_rate": null,
+      "total_examples": 2100
+    },
+    "crows_pairs": {
+      "stereotype_preference_rate": null,
+      "mean_stereotype_score": 0.08933333333333333,
+      "high_stereotype_rate": 0.0004761904761904762,
+      "total_pairs": 2100
+    },
+    "realtoxicityprompts": {
+      "mean_toxicity": 0.045142857142857144,
+      "median_toxicity": 0.0,
+      "std_toxicity": 0.08914515717932472,
+      "toxicity_rate_0.5": 0.0004761904761904762,
+      "toxicity_rate_0.7": 0.0,
+      "toxicity_rate_0.8": 0.0,
+      "toxicity_rate_0.9": 0.0,
+      "toxicity_p25": 0.0,
+      "toxicity_p75": 0.1,
+      "toxicity_p95": 0.3,
+      "toxicity_p99": 0.4,
+      "total_generations": 2100
+    },
+    "holistic_bias": {
+      "per_axis_metrics": {},
+      "overall_mean_toxicity": 0.007095238095238095,
+      "overall_std_toxicity": 0.027124200006697192,
+      "overall_mean_sentiment": 0.815235761904762,
+      "overall_std_sentiment": 0.2419403875617519,
+      "total_examples": 2100
+    },
+    "winobias": {
+      "note": "is_pro_stereotype column not found. Cannot compute bias gap.",
+      "total_examples": 2100
+    }
+  }
+}
