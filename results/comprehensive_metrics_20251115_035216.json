@@ -1,0 +1,132 @@
+{
+  "provider_fairness": {
+    "demographic_parity_difference": 0.1051428571428571,
+    "equalized_odds_difference": 0.1051428571428571,
+    "disparate_impact_ratio": 0.8722444020135394,
+    "statistical_tests": {
+      "anova": {
+        "f_statistic": 17.9048194603634,
+        "p_value": 9.786412072011238e-18,
+        "significant": "True"
+      },
+      "pairwise_comparisons": "     group1   group2     mean1  ...                                      bootstrap_ci1                                      bootstrap_ci2  significant_after_correction\n0    claude   gemini  0.762717  ...  {'mean': 0.7627168101386896, 'ci_lower': 0.750...  {'mean': 0.7210792678571428, 'ci_lower': 0.709...                          True\n1    claude    gemma  0.762717  ...  {'mean': 0.7627168101386896, 'ci_lower': 0.750...  {'mean': 0.785852467811159, 'ci_lower': 0.7694...                         False\n2    claude  llama31  0.762717  ...  {'mean': 0.7627168101386896, 'ci_lower': 0.750...  {'mean': 0.7463439047619048, 'ci_lower': 0.734...                         False\n3    claude  llama32  0.762717  ...  {'mean': 0.7627168101386896, 'ci_lower': 0.750...  {'mean': 0.7671472857142856, 'ci_lower': 0.752...                         False\n4    claude   openai  0.762717  ...  {'mean': 0.7627168101386896, 'ci_lower': 0.750...  {'mean': 0.7877442666666666, 'ci_lower': 0.777...                          True\n5    gemini    gemma  0.721079  ...  {'mean': 0.7210792678571428, 'ci_lower': 0.709...  {'mean': 0.785852467811159, 'ci_lower': 0.7694...                          True\n6    gemini  llama31  0.721079  ...  {'mean': 0.7210792678571428, 'ci_lower': 0.709...  {'mean': 0.7463439047619048, 'ci_lower': 0.734...                         False\n7    gemini  llama32  0.721079  ...  {'mean': 0.7210792678571428, 'ci_lower': 0.709...  {'mean': 0.7671472857142856, 'ci_lower': 0.752...                          True\n8    gemini   openai  0.721079  ...  {'mean': 0.7210792678571428, 'ci_lower': 0.709...  {'mean': 0.7877442666666666, 'ci_lower': 0.777...                          True\n9     gemma  llama31  0.785852  ...  {'mean': 0.785852467811159, 'ci_lower': 0.7694...  {'mean': 0.7463439047619048, 'ci_lower': 0.734...                          True\n10    gemma  llama32  0.785852  ...  {'mean': 0.785852467811159, 'ci_lower': 0.7694...  {'mean': 0.7671472857142856, 'ci_lower': 0.752...                         False\n11    gemma   openai  0.785852  ...  {'mean': 0.785852467811159, 'ci_lower': 0.7694...  {'mean': 0.7877442666666666, 'ci_lower': 0.777...                         False\n12  llama31  llama32  0.746344  ...  {'mean': 0.7463439047619048, 'ci_lower': 0.734...  {'mean': 0.7671472857142856, 'ci_lower': 0.752...                         False\n13  llama31   openai  0.746344  ...  {'mean': 0.7463439047619048, 'ci_lower': 0.734...  {'mean': 0.7877442666666666, 'ci_lower': 0.777...                          True\n14  llama32   openai  0.767147  ...  {'mean': 0.7671472857142856, 'ci_lower': 0.752...  {'mean': 0.7877442666666666, 'ci_lower': 0.777...                         False\n\n[15 rows x 16 columns]",
+      "bonferroni_corrected_alpha": 0.0033333333333333335
+    },
+    "stereoset": {
+      "ss_score": 0.002631578947368421,
+      "icat": 96.97894736842105,
+      "stereotype_rate": 0.002631578947368421
+    },
+    "bold": {
+      "mean_sentiment": 0.7627193352394569,
+      "mean_toxicity": 0.0010007147962830597,
+      "sentiment_std": 0.22429971637937854,
+      "toxicity_std": 0.009956953102350443,
+      "domain_sentiment_parity": null
+    },
+    "bbq": {
+      "qa_accuracy": null,
+      "biased_answer_rate": null,
+      "total_examples": 1899
+    },
+    "crows_pairs": {
+      "stereotype_preference_rate": null,
+      "mean_stereotype_score": 0.04431578947368421,
+      "high_stereotype_rate": 0.002105263157894737,
+      "total_pairs": 1900
+    },
+    "realtoxicityprompts": {
+      "mean_toxicity": 0.005499735589635114,
+      "median_toxicity": 0.0,
+      "std_toxicity": 0.02564308079234324,
+      "toxicity_rate_0.5": 0.0,
+      "toxicity_rate_0.7": 0.0,
+      "toxicity_rate_0.8": 0.0,
+      "toxicity_rate_0.9": 0.0,
+      "toxicity_p25": 0.0,
+      "toxicity_p75": 0.0,
+      "toxicity_p95": 0.05,
+      "toxicity_p99": 0.1,
+      "mean_toxicity_non_toxic_prompt": 0.005499735589635114,
+      "toxicity_rate_0.5_non_toxic_prompt": 0.0,
+      "total_generations": 1891
+    },
+    "holistic_bias": {
+      "per_axis_metrics": {},
+      "overall_mean_toxicity": 0.009842105263157897,
+      "overall_std_toxicity": 0.030321713931514078,
+      "overall_mean_sentiment": 0.9494390526315789,
+      "overall_std_sentiment": 0.1134971158168057,
+      "total_examples": 1900
+    },
+    "winobias": {
+      "note": "is_pro_stereotype column not found. Cannot compute bias gap.",
+      "total_examples": 1900
+    }
+  },
+  "model_fairness": {
+    "demographic_parity_difference": 0.18952380952380954,
+    "equalized_odds_difference": 0.18952380952380954,
+    "disparate_impact_ratio": 0.7761529808773903,
+    "statistical_tests": {
+      "anova": {
+        "f_statistic": 9.760442870260766,
+        "p_value": 1.1219498078351738e-27,
+        "significant": "True"
+      },
+      "pairwise_comparisons": "                                group1                            group2  ...                                      bootstrap_ci2  significant_after_correction\n0             claude-opus-4-1-20250805          claude-sonnet-4-20250514  ...  {'mean': 0.7951885, 'ci_lower': 0.774175830357...                         False\n1             claude-opus-4-1-20250805        claude-sonnet-4-5-20250929  ...  {'mean': 0.7209769119769119, 'ci_lower': 0.694...                         False\n2             claude-opus-4-1-20250805                  gemini-2.0-flash  ...  {'mean': 0.6800715714285714, 'ci_lower': 0.654...                          True\n3             claude-opus-4-1-20250805                  gemini-2.5-flash  ...  {'mean': 0.7089715714285715, 'ci_lower': 0.683...                          True\n4             claude-opus-4-1-20250805             gemini-2.5-flash-lite  ...  {'mean': 0.7479503571428572, 'ci_lower': 0.722...                         False\n..                                 ...                               ...  ...                                                ...                           ...\n166  meta-llama/Llama-3.1-70B-Instruct  meta-llama/Llama-3.2-1B-Instruct  ...  {'mean': 0.790297, 'ci_lower': 0.7700057035714...                         False\n167  meta-llama/Llama-3.1-70B-Instruct  meta-llama/Llama-3.2-3B-Instruct  ...  {'mean': 0.7439975714285715, 'ci_lower': 0.721...                         False\n168   meta-llama/Llama-3.1-8B-Instruct  meta-llama/Llama-3.2-1B-Instruct  ...  {'mean': 0.790297, 'ci_lower': 0.7700057035714...                          True\n169   meta-llama/Llama-3.1-8B-Instruct  meta-llama/Llama-3.2-3B-Instruct  ...  {'mean': 0.7439975714285715, 'ci_lower': 0.721...                         False\n170   meta-llama/Llama-3.2-1B-Instruct  meta-llama/Llama-3.2-3B-Instruct  ...  {'mean': 0.7439975714285715, 'ci_lower': 0.721...                         False\n\n[171 rows x 16 columns]",
+      "bonferroni_corrected_alpha": 0.00029239766081871346
+    },
+    "stereoset": {
+      "ss_score": 0.002631578947368421,
+      "icat": 96.97894736842105,
+      "stereotype_rate": 0.002631578947368421
+    },
+    "bold": {
+      "mean_sentiment": 0.7627193352394569,
+      "mean_toxicity": 0.0010007147962830597,
+      "sentiment_std": 0.22429971637937854,
+      "toxicity_std": 0.009956953102350443,
+      "domain_sentiment_parity": null
+    },
+    "bbq": {
+      "qa_accuracy": null,
+      "biased_answer_rate": null,
+      "total_examples": 1899
+    },
+    "crows_pairs": {
+      "stereotype_preference_rate": null,
+      "mean_stereotype_score": 0.04431578947368421,
+      "high_stereotype_rate": 0.002105263157894737,
+      "total_pairs": 1900
+    },
+    "realtoxicityprompts": {
+      "mean_toxicity": 0.005499735589635114,
+      "median_toxicity": 0.0,
+      "std_toxicity": 0.02564308079234324,
+      "toxicity_rate_0.5": 0.0,
+      "toxicity_rate_0.7": 0.0,
+      "toxicity_rate_0.8": 0.0,
+      "toxicity_rate_0.9": 0.0,
+      "toxicity_p25": 0.0,
+      "toxicity_p75": 0.0,
+      "toxicity_p95": 0.05,
+      "toxicity_p99": 0.1,
+      "mean_toxicity_non_toxic_prompt": 0.005499735589635114,
+      "toxicity_rate_0.5_non_toxic_prompt": 0.0,
+      "total_generations": 1891
+    },
+    "holistic_bias": {
+      "per_axis_metrics": {},
+      "overall_mean_toxicity": 0.009842105263157897,
+      "overall_std_toxicity": 0.030321713931514078,
+      "overall_mean_sentiment": 0.9494390526315789,
+      "overall_std_sentiment": 0.1134971158168057,
+      "total_examples": 1900
+    },
+    "winobias": {
+      "note": "is_pro_stereotype column not found. Cannot compute bias gap.",
+      "total_examples": 1900
+    }
+  }
+}

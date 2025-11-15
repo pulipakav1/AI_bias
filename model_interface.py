@@ -8,7 +8,6 @@ from config import (
     ANTHROPIC_API_KEY,
     GOOGLE_API_KEY,
     OPENAI_API_KEY,
-    PERPLEXITY_API_KEY,
     HUGGINGFACE_API_KEY
 )
 
@@ -66,25 +65,6 @@ def query_gemini(model_name, prompt, max_tokens=500):
             return f"[BLOCKED: {response.prompt_feedback.block_reason}]"
         
         return response.text.strip() if response.text else "[No text returned]"
-    except Exception as e:
-        return f"Error: {e}"
-
-#query perplexity
-def query_perplexity(model_name, prompt, max_tokens=500):
-    try:
-        url = "https://api.perplexity.ai/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": max_tokens
-        }
-        response = requests.post(url, json=payload, headers=headers)
-        result = response.json()
-        return result["choices"][0]["message"]["content"].strip()
     except Exception as e:
         return f"Error: {e}"
 
@@ -174,9 +154,7 @@ def query_model(provider, model_name, prompt, max_tokens=500):
         return query_openai(model_name, prompt, max_tokens)
     elif provider == "gemini":
         return query_gemini(model_name, prompt, max_tokens)
-    elif provider == "perplexity":
-        return query_perplexity(model_name, prompt, max_tokens)
     elif provider in ["llama31", "llama32", "gemma"]:
         return query_hf_model(model_name, prompt, max_tokens, use_chat_template=True)
     else:
-        return f"Error: Unknown provider '{provider}'. Supported: claude, openai, gemini, perplexity, llama31, llama32, gemma"
+        return f"Error: Unknown provider '{provider}'. Supported: claude, openai, gemini, llama31, llama32, gemma"

@@ -15,7 +15,7 @@ except ImportError:
     print("Comprehensive metrics not available. Using basic metrics.")
 
 # benchmark pipeline execution
-def run_benchmark(include_hf_models=True, hf_only=False):
+def run_benchmark(include_hf_models=True, hf_only=False, dataset_filter=None, provider_filter=None, model_filter=None):
 
     if hf_only:
         model_sets = HF_MODELS.copy()
@@ -24,14 +24,38 @@ def run_benchmark(include_hf_models=True, hf_only=False):
         model_sets = ALL_MODELS.copy()
         if include_hf_models:
             model_sets.update(HF_MODELS)
-            print("Models: OpenAI (ChatGPT), Claude, Gemini, Perplexity, Llama 3.1, Llama 3.2, Gemma")
+            print("Models: OpenAI (ChatGPT), Claude, Gemini, Llama 3.1, Llama 3.2, Gemma")
         else:
-            print("Models: OpenAI (ChatGPT), Claude, Gemini, Perplexity")
+            print("Models: OpenAI (ChatGPT), Claude, Gemini")
     
     # Load datasets
     print("Loading benchmark datasets:")
     datasets = load_all_datasets()
+    if dataset_filter:
+        dataset_filter = {d.strip() for d in dataset_filter if d.strip()}
+        datasets = {name: prompts for name, prompts in datasets.items() if name in dataset_filter}
+        if not datasets:
+            raise ValueError(f"Dataset filter {dataset_filter} yielded no datasets.")
+        print(f"Dataset filter active -> {list(datasets.keys())}")
     print(f"Loaded {len(datasets)} datasets\n")
+    if provider_filter:
+        provider_filter = {p.strip() for p in provider_filter if p.strip()}
+        model_sets = {provider: models for provider, models in model_sets.items() if provider in provider_filter}
+        if not model_sets:
+            raise ValueError(f"Provider filter {provider_filter} yielded no providers.")
+        print(f"Provider filter active -> {list(model_sets.keys())}")
+
+    if model_filter:
+        selected_models = {m.strip() for m in model_filter if m.strip()}
+        filtered = {}
+        for provider, models in model_sets.items():
+            keep = [m for m in models if m in selected_models]
+            if keep:
+                filtered[provider] = keep
+        model_sets = filtered
+        if not model_sets:
+            raise ValueError(f"Model filter {selected_models} yielded no models.")
+        print(f"Model filter active -> { {p: ms for p, ms in model_sets.items()} }")
     
     results = []
     
@@ -48,30 +72,60 @@ def run_benchmark(include_hf_models=True, hf_only=False):
             for model in models:
                 print(f"  Running {model}...")
                 
-                for i, prompt in enumerate(tqdm(dataset_prompts, desc=f"  {model}")):
-                    response = query_model(provider, model, prompt, MAX_TOKENS)
-                    
-                    results.append({
+                for i, prompt_item in enumerate(tqdm(dataset_prompts, desc=f"  {model}")):
+                    if isinstance(prompt_item, dict):
+                        prompt_text = prompt_item.get("prompt", "")
+                        metadata = {k: v for k, v in prompt_item.items() if k != "prompt"}
+                    else:
+                        prompt_text = str(prompt_item)
+                        metadata = {}
+
+                    if not prompt_text:
+                        continue
+
+                    response = query_model(provider, model, prompt_text, MAX_TOKENS)
+
+                    record = {
                         "timestamp": datetime.now().isoformat(),
                         "provider": provider,
                         "model": model,
                         "dataset": dataset_name,
                         "prompt_id": i,
-                        "prompt": prompt,
+                        "prompt": prompt_text,
                         "response": response
-                    })
+                    }
+                    record.update(metadata)
+                    results.append(record)
                 
                 print(f" Completed {model}\n")
     
     # Save raw results
-    df = pd.DataFrame(results)
-    raw_file = f"{OUTPUT_DIR}/raw_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    df.to_csv(raw_file, index=False)
+    df_raw = pd.DataFrame(results)
+    run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+    raw_file = f"{OUTPUT_DIR}/raw_results_{run_id}.csv"
+    df_raw.to_csv(raw_file, index=False)
     print(f"Raw results saved: {raw_file}")
+
+    for (provider, model), group_df in df_raw.groupby(["provider", "model"]):
+        safe_name = f"{provider}_{model}".replace("/", "_").replace(" ", "_")
+        sub_path = f"{OUTPUT_DIR}/raw_results_{safe_name}_{run_id}.csv"
+        group_df.to_csv(sub_path, index=False)
+        print(f"Saved per-model raw results: {sub_path}")
+
+    df = df_raw.copy()
+    df["is_error"] = df["response"].astype(str).str.startswith("Error:")
+    error_count = df["is_error"].sum()
+    if error_count:
+        print(f"\n⚠️  Detected {error_count} error responses ({error_count / len(df):.2%}). They will be excluded from metric calculations.")
+    df_clean = df[~df["is_error"]].copy()
+    if df_clean.empty:
+        raise RuntimeError("All generations failed. Cannot compute metrics.")
     
     # Compute fairness metrics
     print("\nComputing fairness and bias metrics:")
-    df, metrics = compute_all_fairness_metrics(df)
+    df_clean, metrics = compute_all_fairness_metrics(df_clean)
+    metrics["error_rows"] = int(error_count)
+    metrics["error_rate"] = float(error_count / len(df))
     
     # Compute comprehensive metrics if available
     if COMPREHENSIVE_METRICS_AVAILABLE:
@@ -80,12 +134,12 @@ def run_benchmark(include_hf_models=True, hf_only=False):
         
         # Compute comprehensive fairness metrics by provider
         comprehensive_metrics['provider_fairness'] = compute_comprehensive_fairness_metrics(
-            df, group_col="provider", outcome_col="sentiment_score"
+            df_clean, group_col="provider", outcome_col="sentiment_score"
         )
         
         # Compute comprehensive fairness metrics by model
         comprehensive_metrics['model_fairness'] = compute_comprehensive_fairness_metrics(
-            df, group_col="model", outcome_col="sentiment_score"
+            df_clean, group_col="model", outcome_col="sentiment_score"
         )
         
         # Save comprehensive metrics
@@ -110,20 +164,20 @@ def run_benchmark(include_hf_models=True, hf_only=False):
         # Add to main metrics dict
         metrics['comprehensive_metrics'] = comprehensive_metrics
     
-    metrics_file = f"{OUTPUT_DIR}/results_with_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    df.to_csv(metrics_file, index=False)
+    metrics_file = f"{OUTPUT_DIR}/results_with_metrics_{run_id}.csv"
+    df_clean.to_csv(metrics_file, index=False)
     print(f"Results with metrics saved: {metrics_file}")
     
     # Generate visualizations and statistical analysis
     model_version_df = metrics.get("model_version_details", None)
-    summary, stats_results = generate_all_visualizations(df, model_version_df)
+    summary, stats_results = generate_all_visualizations(df_clean, model_version_df)
     
     # summary
     print("SUMMARY:")
-    print(f"\n Total queries: {len(results)}")
-    print(f" Unique models: {df['model'].nunique()}")
-    print(f" Providers tested: {df['provider'].nunique()}")
-    print(f" Datasets tested: {df['dataset'].nunique()}")
+    print(f"\n Total queries: {len(results)} (clean rows: {len(df_clean)})")
+    print(f" Unique models: {df_clean['model'].nunique()}")
+    print(f" Providers tested: {df_clean['provider'].nunique()}")
+    print(f" Datasets tested: {df_clean['dataset'].nunique()}")
     
     print(f"\n Overall Scores:")
     print(f"  Mean Sentiment Score: {metrics['mean_sentiment']:.4f} (±{metrics['std_sentiment']:.4f})")
@@ -157,12 +211,25 @@ def run_hf_models_benchmark():
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "--hf-only":
-        # Run only HF models (Llama, Gemma)
-        run_benchmark(include_hf_models=True, hf_only=True)
-    elif len(sys.argv) > 1 and sys.argv[1] == "--no-hf":
-        # Run without HF models
-        run_benchmark(include_hf_models=False, hf_only=False)
-    else:
-        # Default: Run all models (including HF)
-        run_benchmark(include_hf_models=True, hf_only=False)
+    args = sys.argv[1:]
+    hf_only = "--hf-only" in args
+    include_hf_models = "--no-hf" not in args
+    dataset_filter = None
+    provider_filter = None
+    model_filter = None
+
+    for arg in args:
+        if arg.startswith("--dataset="):
+            dataset_filter = arg.split("=", 1)[1].split(",")
+        elif arg.startswith("--provider="):
+            provider_filter = arg.split("=", 1)[1].split(",")
+        elif arg.startswith("--model="):
+            model_filter = arg.split("=", 1)[1].split(",")
+
+    run_benchmark(
+        include_hf_models=include_hf_models,
+        hf_only=hf_only,
+        dataset_filter=dataset_filter,
+        provider_filter=provider_filter,
+        model_filter=model_filter,
+    )

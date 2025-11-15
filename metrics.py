@@ -520,9 +520,16 @@ def compute_effect_size(group1, group2):
 def compute_confidence_interval(data, confidence=0.95):
     
     n = len(data)
-    mean = np.mean(data)
-    std_err = stats.sem(data)
+    mean = np.mean(data) if n else float("nan")
+    if n < 2:
+        return {
+            'mean': mean,
+            'ci_lower': mean,
+            'ci_upper': mean,
+            'confidence': confidence
+        }
     
+    std_err = stats.sem(data)
     h = std_err * stats.t.ppf((1 + confidence) / 2, n - 1)
     
     return {
@@ -530,6 +537,31 @@ def compute_confidence_interval(data, confidence=0.95):
         'ci_lower': mean - h,
         'ci_upper': mean + h,
         'confidence': confidence
+    }
+
+
+def bootstrap_confidence_interval(data, confidence=0.95, n_bootstrap=2000, random_state=42):
+    
+    data = np.asarray(data)
+    n = len(data)
+    if n == 0:
+        return None
+    
+    rng = np.random.default_rng(random_state)
+    means = []
+    for _ in range(n_bootstrap):
+        sample = rng.choice(data, size=n, replace=True)
+        means.append(sample.mean())
+    
+    lower = np.percentile(means, (1 - confidence) / 2 * 100)
+    upper = np.percentile(means, (1 + confidence) / 2 * 100)
+    
+    return {
+        'mean': float(np.mean(data)),
+        'ci_lower': float(lower),
+        'ci_upper': float(upper),
+        'confidence': confidence,
+        'n_bootstrap': n_bootstrap
     }
 
 def perform_comprehensive_statistical_tests(df, group_col, metric_col="sentiment_score"):
@@ -569,6 +601,8 @@ def perform_comprehensive_statistical_tests(df, group_col, metric_col="sentiment
             # Confidence intervals
             ci1 = compute_confidence_interval(data1)
             ci2 = compute_confidence_interval(data2)
+            boot1 = bootstrap_confidence_interval(data1)
+            boot2 = bootstrap_confidence_interval(data2)
             
             pairwise_results.append({
                 'group1': name1,
@@ -583,7 +617,9 @@ def perform_comprehensive_statistical_tests(df, group_col, metric_col="sentiment
                 'ci1_lower': ci1['ci_lower'],
                 'ci1_upper': ci1['ci_upper'],
                 'ci2_lower': ci2['ci_lower'],
-                'ci2_upper': ci2['ci_upper']
+                'ci2_upper': ci2['ci_upper'],
+                'bootstrap_ci1': boot1,
+                'bootstrap_ci2': boot2,
             })
     
     results['pairwise_comparisons'] = pd.DataFrame(pairwise_results)

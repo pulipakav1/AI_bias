@@ -9,7 +9,6 @@ except ImportError:
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 #MODELS
@@ -36,16 +35,10 @@ GEMINI_MODELS = [
     "gemini-2.0-flash"
 ]
 
-PERPLEXITY_MODELS = [
-    "sonar",
-    "sonar-pro",
-]
-
 ALL_MODELS = {
     "claude": CLAUDE_MODELS,
     "openai": OPENAI_MODELS,
     "gemini": GEMINI_MODELS,
-    "perplexity": PERPLEXITY_MODELS
 }
 
 # Open-Weighted Models

@@ -29,7 +29,7 @@ def plot_provider_comparison(df, metric="sentiment_score"):
     
     sns.boxplot(data=df, x="provider", y=metric, palette="Set2")
     plt.ylabel(metric.replace("_", " ").title())
-    plt.title(f"Provider Comparison: {metric.replace('_', " ").title()}")
+    plt.title(f"Provider Comparison: {metric.replace('_', ' ').title()}")
     plt.tight_layout()
     plt.savefig(f"{PLOTS_DIR}/provider_comparison_{metric}.png", dpi=300)
     plt.close()
@@ -61,6 +61,62 @@ def plot_correlation_heatmap(df):
     plt.tight_layout()
     plt.savefig(f"{PLOTS_DIR}/metric_correlation_heatmap.png", dpi=300)
     plt.close()
+
+
+def plot_axis_level_metrics(df):
+    """Plot mean sentiment and toxicity per demographic axis."""
+    if "axis" not in df.columns:
+        print("Axis column missing; skipping axis-level plot.")
+        return
+
+    metric_cols = [col for col in ["sentiment_score", "toxicity_score"] if col in df.columns]
+    if not metric_cols:
+        return
+
+    axis_means = (
+        df.groupby("axis")[metric_cols]
+        .mean()
+        .sort_values(by=metric_cols[0], ascending=False)
+    )
+
+    ax = axis_means.plot(kind="bar", figsize=(14, 7))
+    ax.set_title("Mean Sentiment & Toxicity by Axis", fontsize=14, fontweight="bold")
+    ax.set_ylabel("Score")
+    ax.set_xlabel("Axis")
+    ax.tick_params(axis="x", rotation=45)
+    plt.tight_layout()
+    plt.savefig(f"{PLOTS_DIR}/axis_mean_sentiment_toxicity.png", dpi=300)
+    plt.close()
+
+
+def plot_group_level_metrics(df):
+    """Plot mean sentiment and toxicity per group within each axis."""
+    if not {"axis", "group"}.issubset(df.columns):
+        print("Axis/group columns missing; skipping group-level plots.")
+        return
+
+    metric_cols = [col for col in ["sentiment_score", "toxicity_score"] if col in df.columns]
+    if not metric_cols:
+        return
+
+    axes = sorted(df["axis"].dropna().unique())
+    for axis in axes:
+        axis_df = df[(df["axis"] == axis) & df["group"].notna()]
+        if axis_df["group"].nunique() < 2:
+            continue
+        group_means = (
+            axis_df.groupby("group")[metric_cols]
+            .mean()
+            .sort_values(by=metric_cols[-1], ascending=False)
+        )
+        ax = group_means.plot(kind="barh", figsize=(14, max(6, 0.4 * len(group_means))))
+        ax.set_title(f"{axis}: Group-Level Sentiment & Toxicity", fontsize=14, fontweight="bold")
+        ax.set_xlabel("Score")
+        ax.set_ylabel("Group")
+        plt.tight_layout()
+        safe_axis = str(axis).replace("/", "_").replace(" ", "_")
+        plt.savefig(f"{PLOTS_DIR}/axis_{safe_axis}_group_sentiment_toxicity.png", dpi=300)
+        plt.close()
 
 # Model version comparison within each provider
 def plot_provider_model_versions(df, metric="sentiment_score"):
@@ -417,6 +473,43 @@ def perform_statistical_tests(df):
     
     results["pairwise_tests"] = pd.DataFrame(pairwise_results)
     results["pairwise_tests"].to_csv(f"{TABLES_DIR}/pairwise_statistical_tests.csv", index=False)
+
+    # Axis-level ANOVA on toxicity
+    if "axis" in df.columns and "toxicity_score" in df.columns:
+        axis_values = df["axis"].dropna().unique()
+        if len(axis_values) >= 2:
+            axis_groups = [df[df["axis"] == axis]["toxicity_score"].dropna().values for axis in axis_values]
+            if all(len(group) > 1 for group in axis_groups):
+                f_axis, p_axis = stats.f_oneway(*axis_groups)
+                results["axis_toxicity_anova"] = {
+                    "f_statistic": f_axis,
+                    "p_value": p_axis,
+                    "significant": p_axis < 0.05,
+                    "axes_tested": axis_values.tolist(),
+                }
+
+    # Group-level ANOVAs within each axis
+    if {"axis", "group", "toxicity_score"}.issubset(df.columns):
+        group_results = {}
+        for axis in df["axis"].dropna().unique():
+            axis_subset = df[(df["axis"] == axis) & df["group"].notna()]
+            if axis_subset["group"].nunique() < 2:
+                continue
+            group_arrays = [
+                axis_subset[axis_subset["group"] == group]["toxicity_score"].dropna().values
+                for group in axis_subset["group"].unique()
+            ]
+            if any(len(arr) < 2 for arr in group_arrays):
+                continue
+            f_val, p_val = stats.f_oneway(*group_arrays)
+            group_results[axis] = {
+                "f_statistic": f_val,
+                "p_value": p_val,
+                "significant": p_val < 0.05,
+                "groups_tested": axis_subset["group"].unique().tolist(),
+            }
+        if group_results:
+            results["axis_group_toxicity_anova"] = group_results
     
     return results
 
@@ -437,6 +530,8 @@ def generate_all_visualizations(df, model_version_df=None):
     # Advanced visualizations
     plot_correlation_heatmap(df)
     plot_model_metrics_heatmap(df)
+    plot_axis_level_metrics(df)
+    plot_group_level_metrics(df)
     
     # Model version line plots
     print("\nGenerating model version line plots...")
